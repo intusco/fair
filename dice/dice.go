@@ -16,7 +16,7 @@ import (
 
 const diceURL = "https://intus.co/dice/%s/fair/%d"
 
-type roll struct {
+type Roll struct {
 	ServerHash string
 	ServerRand string
 	ClientRand string
@@ -25,7 +25,8 @@ type roll struct {
 	RollValue  int64
 }
 
-func verifyRoll(r *roll) error {
+// VerifyRoll verifies an Intus.co roll is fair.
+func VerifyRoll(r *Roll) error {
 	serverHash, err := hex.DecodeString(r.ServerHash)
 	if err != nil {
 		return err
@@ -50,7 +51,7 @@ func verifyRoll(r *roll) error {
 	}
 
 	// Concatenate serverRand and clientRand.
-	combRand := append(serverRand[:], clientRand...)
+	combRand := append(serverRand, clientRand...)
 
 	// Hash the result.
 	combHash := sha512.Sum512(combRand)
@@ -89,7 +90,7 @@ func main() {
 
 	requestID, err := strconv.ParseInt(flag.Arg(1), 10, 64)
 	if err != nil {
-		log.Fatalf("unknown request ID %v", flag.Arg(0))
+		log.Fatalf("unknown request ID %v", flag.Arg(1))
 	}
 
 	log.Printf("processing request ID %v", requestID)
@@ -105,13 +106,15 @@ func main() {
 		log.Fatalf("server response %v", resp.Status)
 	}
 
-	roll := &roll{}
+	roll := &Roll{}
 	defer resp.Body.Close()
 	if err := json.NewDecoder(resp.Body).Decode(roll); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := verifyRoll(roll); err != nil {
+	log.Println("Server Hash:", roll.ServerHash)
+	log.Println("Client Rand:", roll.ClientRand)
+	if err := VerifyRoll(roll); err != nil {
 		log.Fatal(err)
 	}
 }
